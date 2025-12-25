@@ -89,6 +89,7 @@ This project is designed for:
 ### GUI Desktop Features
 
 The desktop environment (`gui` command) provides:
+
 - 🖥️ Dark-themed desktop with wallpaper pattern
 - 📊 Taskbar with Start button and system clock
 - 🪟 Window management (drag, focus, close)
