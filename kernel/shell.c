@@ -14,6 +14,9 @@
 #include "../include/rtc.h"
 #include "../include/memory.h"
 #include "../include/tui.h"
+#include "../include/fs.h"
+#include "../include/process.h"
+#include "../include/gui.h"
 
 /* Maximum number of registered commands */
 #define MAX_COMMANDS 32
@@ -349,6 +352,181 @@ void cmd_demo(int argc, char* argv[]) {
     vga_puts("Returned to shell.\n");
 }
 
+/* Built-in: gui - launch desktop environment */
+void cmd_gui(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+    
+    vga_set_color(vga_color(VGA_COLOR_CYAN, VGA_COLOR_BLACK));
+    vga_puts("\nLaunching NightOS Desktop...\n");
+    vga_puts("Press TAB for Start Menu, ESC to close windows\n");
+    vga_puts("Press any key to continue...\n");
+    keyboard_getchar();
+    
+    gui_run();
+    
+    /* Redraw shell prompt after returning */
+    vga_clear();
+    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+    vga_puts("Returned to shell from desktop.\n");
+}
+
+/* Built-in: ls - list files */
+void cmd_ls(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+    
+    fs_dirent_t entries[32];
+    int count = fs_list(entries, 32);
+    
+    vga_set_color(vga_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+    vga_puts("\n  Files in filesystem:\n");
+    vga_puts("  ====================\n");
+    
+    for (int i = 0; i < count; i++) {
+        if (entries[i].type == FS_TYPE_DIRECTORY) {
+            vga_set_color(vga_color(VGA_COLOR_CYAN, VGA_COLOR_BLACK));
+            vga_printf("  [DIR]  %s\n", entries[i].name);
+        } else {
+            vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+            vga_printf("  [FILE] %-16s %d bytes\n", entries[i].name, entries[i].size);
+        }
+    }
+    
+    vga_set_color(vga_color(VGA_COLOR_DARK_GREY, VGA_COLOR_BLACK));
+    vga_printf("\n  Total: %d items\n\n", count);
+    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+}
+
+/* Built-in: touch - create file */
+void cmd_touch(int argc, char* argv[]) {
+    if (argc < 2) {
+        vga_puts("Usage: touch <filename>\n");
+        return;
+    }
+    
+    int result = fs_create(argv[1], FS_TYPE_FILE);
+    if (result == 0) {
+        vga_set_color(vga_color(VGA_COLOR_GREEN, VGA_COLOR_BLACK));
+        vga_printf("Created file: %s\n", argv[1]);
+    } else if (result == -2) {
+        vga_set_color(vga_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK));
+        vga_printf("File already exists: %s\n", argv[1]);
+    } else {
+        vga_set_color(vga_color(VGA_COLOR_RED, VGA_COLOR_BLACK));
+        vga_printf("Failed to create file: %s (error %d)\n", argv[1], result);
+    }
+    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+}
+
+/* Built-in: rm - delete file */
+void cmd_rm(int argc, char* argv[]) {
+    if (argc < 2) {
+        vga_puts("Usage: rm <filename>\n");
+        return;
+    }
+    
+    int result = fs_delete(argv[1]);
+    if (result == 0) {
+        vga_set_color(vga_color(VGA_COLOR_GREEN, VGA_COLOR_BLACK));
+        vga_printf("Deleted: %s\n", argv[1]);
+    } else {
+        vga_set_color(vga_color(VGA_COLOR_RED, VGA_COLOR_BLACK));
+        vga_printf("Failed to delete: %s\n", argv[1]);
+    }
+    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+}
+
+/* Built-in: cat - display file content */
+void cmd_cat(int argc, char* argv[]) {
+    if (argc < 2) {
+        vga_puts("Usage: cat <filename>\n");
+        return;
+    }
+    
+    int handle = fs_open(argv[1], FS_FLAG_READ);
+    if (handle < 0) {
+        vga_set_color(vga_color(VGA_COLOR_RED, VGA_COLOR_BLACK));
+        vga_printf("Cannot open file: %s\n", argv[1]);
+        vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+        return;
+    }
+    
+    char buffer[256];
+    int bytes;
+    while ((bytes = fs_read(handle, buffer, 255)) > 0) {
+        buffer[bytes] = '\0';
+        vga_puts(buffer);
+    }
+    vga_putchar('\n');
+    
+    fs_close(handle);
+}
+
+/* Built-in: write - write to file */
+void cmd_write(int argc, char* argv[]) {
+    if (argc < 3) {
+        vga_puts("Usage: write <filename> <content>\n");
+        return;
+    }
+    
+    /* Create file if doesn't exist */
+    if (!fs_exists(argv[1])) {
+        fs_create(argv[1], FS_TYPE_FILE);
+    }
+    
+    int handle = fs_open(argv[1], FS_FLAG_WRITE);
+    if (handle < 0) {
+        vga_set_color(vga_color(VGA_COLOR_RED, VGA_COLOR_BLACK));
+        vga_printf("Cannot open file: %s\n", argv[1]);
+        vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+        return;
+    }
+    
+    /* Write all arguments after filename */
+    for (int i = 2; i < argc; i++) {
+        fs_write(handle, argv[i], strlen(argv[i]));
+        if (i < argc - 1) {
+            fs_write(handle, " ", 1);
+        }
+    }
+    fs_write(handle, "\n", 1);
+    
+    fs_close(handle);
+    
+    vga_set_color(vga_color(VGA_COLOR_GREEN, VGA_COLOR_BLACK));
+    vga_printf("Written to: %s\n", argv[1]);
+    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+}
+
+/* Built-in: ps - list processes */
+void cmd_ps(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+    
+    proc_info_t info[16];
+    int count = process_list(info, 16);
+    
+    vga_set_color(vga_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+    vga_puts("\n  PID  Name             State      CPU\n");
+    vga_puts("  ===  ====             =====      ===\n");
+    
+    const char* state_names[] = {"FREE", "READY", "RUN", "BLOCK", "ZOMBIE"};
+    
+    for (int i = 0; i < count; i++) {
+        vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+        vga_printf("  %-4d %-16s ", info[i].pid, info[i].name);
+        
+        if (info[i].state == PROC_STATE_RUNNING) {
+            vga_set_color(vga_color(VGA_COLOR_GREEN, VGA_COLOR_BLACK));
+        }
+        vga_printf("%-10s %d\n", state_names[info[i].state], info[i].cpu_time);
+    }
+    
+    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+    vga_putchar('\n');
+}
+
 /* Initialize shell */
 void shell_init(void) {
     num_commands = 0;
@@ -367,6 +545,13 @@ void shell_init(void) {
     shell_register_command("mem", "Display memory statistics", cmd_mem);
     shell_register_command("sleep", "Sleep for N seconds", cmd_sleep);
     shell_register_command("demo", "TUI demonstration", cmd_demo);
+    shell_register_command("gui", "Launch desktop environment", cmd_gui);
+    shell_register_command("ls", "List files", cmd_ls);
+    shell_register_command("touch", "Create a file", cmd_touch);
+    shell_register_command("rm", "Delete a file", cmd_rm);
+    shell_register_command("cat", "Display file content", cmd_cat);
+    shell_register_command("write", "Write to a file", cmd_write);
+    shell_register_command("ps", "List processes", cmd_ps);
 }
 
 /* Main shell loop */

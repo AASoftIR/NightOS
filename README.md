@@ -31,7 +31,7 @@ This project is designed for:
 
 ## Features
 
-### Current Features (v0.1.0 "Midnight")
+### Current Features (v0.2.0 "Eclipse")
 
 - ✅ Custom bootloader (16-bit → 32-bit protected mode)
 - ✅ VGA text mode driver with full color support
@@ -46,6 +46,10 @@ This project is designed for:
 - ✅ Real-Time Clock (RTC) driver
 - ✅ Memory management (heap allocator)
 - ✅ Text User Interface (TUI) framework
+- ✅ RAM-based filesystem (64 files, 4KB each)
+- ✅ Process management (16 processes, cooperative multitasking)
+- ✅ System calls (INT 0x80 interface)
+- ✅ GUI Desktop Environment (text-mode)
 
 ### Built-in Commands
 
@@ -62,6 +66,13 @@ This project is designed for:
 | `mem`     | Display memory statistics  |
 | `sleep`   | Sleep for N seconds        |
 | `demo`    | TUI demonstration          |
+| `gui`     | Launch desktop environment |
+| `ls`      | List files in filesystem   |
+| `touch`   | Create a new file          |
+| `rm`      | Delete a file              |
+| `cat`     | Display file contents      |
+| `write`   | Write text to a file       |
+| `ps`      | List running processes     |
 
 ### Planned Features
 
@@ -70,9 +81,20 @@ This project is designed for:
 - [x] Real-time clock (RTC)
 - [x] Memory management (heap allocator)
 - [x] Text UI framework
-- [ ] Basic filesystem
-- [ ] Process management
-- [ ] System calls
+- [x] Basic filesystem
+- [x] Process management
+- [x] System calls
+- [x] GUI Desktop Environment
+
+### GUI Desktop Features
+
+The desktop environment (`gui` command) provides:
+- 🖥️ Dark-themed desktop with wallpaper pattern
+- 📊 Taskbar with Start button and system clock
+- 🪟 Window management (drag, focus, close)
+- 📁 Desktop icons (Terminal, Files, System Info, Settings, About)
+- 📋 Start menu with application launcher
+- 🕐 Real-time clock display
 
 ## Quick Start
 
@@ -158,7 +180,11 @@ NightOS/
 │   ├── kernel.c        # Main kernel code
 │   ├── shell.c         # Interactive shell
 │   ├── idt.c           # Interrupt Descriptor Table
-│   └── isr.asm         # Interrupt Service Routines
+│   ├── isr.asm         # Interrupt Service Routines
+│   ├── fs.c            # RAM filesystem
+│   ├── process.c       # Process manager
+│   ├── syscall.c       # System call handlers
+│   └── gui.c           # Desktop environment
 ├── drivers/            # Hardware drivers
 │   ├── vga.c           # VGA text mode driver
 │   ├── keyboard.c      # PS/2 keyboard driver
@@ -181,7 +207,11 @@ NightOS/
 │   ├── timer.h         # Timer header
 │   ├── rtc.h           # RTC header
 │   ├── memory.h        # Memory manager header
-│   └── tui.h           # TUI framework header
+│   ├── tui.h           # TUI framework header
+│   ├── fs.h            # Filesystem header
+│   ├── process.h       # Process manager header
+│   ├── syscall.h       # System calls header
+│   └── gui.h           # GUI desktop header
 ├── docs/               # Documentation
 ├── build/              # Build output (generated)
 ├── Makefile            # Build system (Linux/macOS)

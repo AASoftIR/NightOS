@@ -84,6 +84,30 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+%CC% %CFLAGS% %KERNEL_DIR%\fs.c -o %BUILD_DIR%\fs.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Filesystem compilation failed!
+    exit /b 1
+)
+
+%CC% %CFLAGS% %KERNEL_DIR%\process.c -o %BUILD_DIR%\process.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Process compilation failed!
+    exit /b 1
+)
+
+%CC% %CFLAGS% %KERNEL_DIR%\syscall.c -o %BUILD_DIR%\syscall.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Syscall compilation failed!
+    exit /b 1
+)
+
+%CC% %CFLAGS% %KERNEL_DIR%\gui.c -o %BUILD_DIR%\gui.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: GUI compilation failed!
+    exit /b 1
+)
+
 echo [5/9] Compiling drivers...
 %CC% %CFLAGS% %DRIVERS_DIR%\vga.c -o %BUILD_DIR%\vga.o
 if %ERRORLEVEL% neq 0 (
@@ -135,7 +159,7 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo [7/9] Linking kernel...
-%LD% -m i386pe -e _start -Ttext 0x1000 -o %BUILD_DIR%\kernel.pe %BUILD_DIR%\kernel_entry.o %BUILD_DIR%\isr.o %BUILD_DIR%\kernel.o %BUILD_DIR%\shell.o %BUILD_DIR%\idt.o %BUILD_DIR%\vga.o %BUILD_DIR%\keyboard.o %BUILD_DIR%\pic.o %BUILD_DIR%\timer.o %BUILD_DIR%\rtc.o %BUILD_DIR%\string.o %BUILD_DIR%\memory.o %BUILD_DIR%\tui.o 2>nul
+%LD% -m i386pe -e _start -Ttext 0x1000 -o %BUILD_DIR%\kernel.pe %BUILD_DIR%\kernel_entry.o %BUILD_DIR%\isr.o %BUILD_DIR%\kernel.o %BUILD_DIR%\shell.o %BUILD_DIR%\idt.o %BUILD_DIR%\fs.o %BUILD_DIR%\process.o %BUILD_DIR%\syscall.o %BUILD_DIR%\gui.o %BUILD_DIR%\vga.o %BUILD_DIR%\keyboard.o %BUILD_DIR%\pic.o %BUILD_DIR%\timer.o %BUILD_DIR%\rtc.o %BUILD_DIR%\string.o %BUILD_DIR%\memory.o %BUILD_DIR%\tui.o 2>nul
 
 REM Convert PE to raw binary
 echo [8/9] Converting to binary format...

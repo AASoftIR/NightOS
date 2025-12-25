@@ -16,6 +16,10 @@
 #include "../include/rtc.h"
 #include "../include/memory.h"
 #include "../include/tui.h"
+#include "../include/fs.h"
+#include "../include/process.h"
+#include "../include/syscall.h"
+#include "../include/gui.h"
 
 /* Forward declarations */
 static void display_boot_logo(void);
@@ -60,6 +64,18 @@ static void kernel_init(void) {
     
     /* Initialize memory manager */
     memory_init();
+    
+    /* Initialize filesystem */
+    fs_init();
+    
+    /* Initialize process manager */
+    process_init();
+    
+    /* Initialize system calls */
+    syscall_init();
+    
+    /* Initialize GUI */
+    gui_init();
     
     /* Enable interrupts */
     __asm__ volatile("sti");
