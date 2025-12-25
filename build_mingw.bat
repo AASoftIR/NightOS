@@ -51,14 +51,21 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-echo [2/7] Assembling kernel entry...
+echo [2/9] Assembling kernel entry...
 %ASM% -f elf32 -DMINGW %KERNEL_DIR%\kernel_entry.asm -o %BUILD_DIR%\kernel_entry.o
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Kernel entry assembly failed!
     exit /b 1
 )
 
-echo [3/7] Compiling kernel...
+echo [3/9] Assembling ISR handlers...
+%ASM% -f elf32 -DMINGW %KERNEL_DIR%\isr.asm -o %BUILD_DIR%\isr.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: ISR assembly failed!
+    exit /b 1
+)
+
+echo [4/9] Compiling kernel...
 %CC% %CFLAGS% %KERNEL_DIR%\kernel.c -o %BUILD_DIR%\kernel.o
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Kernel compilation failed!
@@ -71,7 +78,13 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-echo [4/7] Compiling drivers...
+%CC% %CFLAGS% %KERNEL_DIR%\idt.c -o %BUILD_DIR%\idt.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: IDT compilation failed!
+    exit /b 1
+)
+
+echo [5/9] Compiling drivers...
 %CC% %CFLAGS% %DRIVERS_DIR%\vga.c -o %BUILD_DIR%\vga.o
 if %ERRORLEVEL% neq 0 (
     echo ERROR: VGA driver compilation failed!
@@ -84,26 +97,55 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-echo [5/7] Compiling libraries...
+%CC% %CFLAGS% %DRIVERS_DIR%\pic.c -o %BUILD_DIR%\pic.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: PIC driver compilation failed!
+    exit /b 1
+)
+
+%CC% %CFLAGS% %DRIVERS_DIR%\timer.c -o %BUILD_DIR%\timer.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Timer driver compilation failed!
+    exit /b 1
+)
+
+%CC% %CFLAGS% %DRIVERS_DIR%\rtc.c -o %BUILD_DIR%\rtc.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: RTC driver compilation failed!
+    exit /b 1
+)
+
+echo [6/9] Compiling libraries...
 %CC% %CFLAGS% %LIB_DIR%\string.c -o %BUILD_DIR%\string.o
 if %ERRORLEVEL% neq 0 (
     echo ERROR: String library compilation failed!
     exit /b 1
 )
 
-echo [6/7] Linking kernel...
-%LD% -m i386pe -e _start -Ttext 0x1000 -o %BUILD_DIR%\kernel.pe %BUILD_DIR%\kernel_entry.o %BUILD_DIR%\kernel.o %BUILD_DIR%\shell.o %BUILD_DIR%\vga.o %BUILD_DIR%\keyboard.o %BUILD_DIR%\string.o 2>nul
+%CC% %CFLAGS% %LIB_DIR%\memory.c -o %BUILD_DIR%\memory.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Memory library compilation failed!
+    exit /b 1
+)
+
+%CC% %CFLAGS% %LIB_DIR%\tui.c -o %BUILD_DIR%\tui.o
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: TUI library compilation failed!
+    exit /b 1
+)
+
+echo [7/9] Linking kernel...
+%LD% -m i386pe -e _start -Ttext 0x1000 -o %BUILD_DIR%\kernel.pe %BUILD_DIR%\kernel_entry.o %BUILD_DIR%\isr.o %BUILD_DIR%\kernel.o %BUILD_DIR%\shell.o %BUILD_DIR%\idt.o %BUILD_DIR%\vga.o %BUILD_DIR%\keyboard.o %BUILD_DIR%\pic.o %BUILD_DIR%\timer.o %BUILD_DIR%\rtc.o %BUILD_DIR%\string.o %BUILD_DIR%\memory.o %BUILD_DIR%\tui.o 2>nul
 
 REM Convert PE to raw binary
-echo [7/7] Converting to binary format...
+echo [8/9] Converting to binary format...
 %OBJCOPY% -O binary %BUILD_DIR%\kernel.pe %BUILD_DIR%\kernel.bin
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Binary conversion failed!
     exit /b 1
 )
 
-echo.
-echo Creating OS image...
+echo [9/9] Creating OS image...
 copy /b %BUILD_DIR%\boot.bin + %BUILD_DIR%\kernel.bin %BUILD_DIR%\nightos.img >nul
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Failed to create OS image!

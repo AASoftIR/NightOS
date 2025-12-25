@@ -64,6 +64,7 @@ void vga_update_cursor(void);
 void vga_putchar(char c);
 void vga_puts(const char* str);
 void vga_printf(const char* format, ...);
+void vga_put_char_at(char c, int x, int y, uint8_t fg, uint8_t bg);
 
 /* Color output */
 void vga_putchar_color(char c, uint8_t color);

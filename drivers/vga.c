@@ -129,6 +129,17 @@ void vga_backspace(void) {
     vga_update_cursor();
 }
 
+/* Put a character at specific position with colors (for TUI) */
+void vga_put_char_at(char c, int x, int y, uint8_t fg, uint8_t bg) {
+    if (x < 0 || x >= VGA_WIDTH || y < 0 || y >= VGA_HEIGHT) {
+        return;
+    }
+    
+    int index = y * VGA_WIDTH + x;
+    uint8_t color = vga_color(fg, bg);
+    vga_buffer[index] = vga_entry(c, color);
+}
+
 /* Put a single character with current color */
 void vga_putchar(char c) {
     vga_putchar_color(c, vga_current_color);

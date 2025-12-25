@@ -39,6 +39,13 @@ This project is designed for:
 - ✅ Interactive shell with built-in commands
 - ✅ Dark theme UI
 - ✅ Clean, modular codebase
+- ✅ Interrupt Descriptor Table (IDT)
+- ✅ CPU exception handling
+- ✅ Hardware interrupt support (PIC)
+- ✅ PIT Timer driver (system clock)
+- ✅ Real-Time Clock (RTC) driver
+- ✅ Memory management (heap allocator)
+- ✅ Text User Interface (TUI) framework
 
 ### Built-in Commands
 
@@ -50,14 +57,19 @@ This project is designed for:
 | `version` | Display OS version         |
 | `reboot`  | Restart the system         |
 | `halt`    | Halt the system            |
-| `time`    | Display system time        |
+| `time`    | Display system date/time   |
+| `uptime`  | Show system uptime         |
+| `mem`     | Display memory statistics  |
+| `sleep`   | Sleep for N seconds        |
+| `demo`    | TUI demonstration          |
 
 ### Planned Features
 
-- [ ] Memory management (heap allocator)
-- [ ] Interrupt handling (IDT)
-- [ ] Timer driver (PIT)
-- [ ] Real-time clock (RTC)
+- [x] Interrupt handling (IDT)
+- [x] Timer driver (PIT)
+- [x] Real-time clock (RTC)
+- [x] Memory management (heap allocator)
+- [x] Text UI framework
 - [ ] Basic filesystem
 - [ ] Process management
 - [ ] System calls
@@ -144,12 +156,19 @@ NightOS/
 ├── kernel/             # Kernel source
 │   ├── kernel_entry.asm # Entry point (ASM → C bridge)
 │   ├── kernel.c        # Main kernel code
-│   └── shell.c         # Interactive shell
+│   ├── shell.c         # Interactive shell
+│   ├── idt.c           # Interrupt Descriptor Table
+│   └── isr.asm         # Interrupt Service Routines
 ├── drivers/            # Hardware drivers
 │   ├── vga.c           # VGA text mode driver
-│   └── keyboard.c      # PS/2 keyboard driver
+│   ├── keyboard.c      # PS/2 keyboard driver
+│   ├── pic.c           # Programmable Interrupt Controller
+│   ├── timer.c         # PIT timer driver
+│   └── rtc.c           # Real-Time Clock driver
 ├── lib/                # Runtime libraries
-│   └── string.c        # String manipulation
+│   ├── string.c        # String manipulation
+│   ├── memory.c        # Heap allocator (kmalloc/kfree)
+│   └── tui.c           # Text User Interface framework
 ├── include/            # Header files
 │   ├── types.h         # Type definitions
 │   ├── config.h        # OS configuration
@@ -157,11 +176,17 @@ NightOS/
 │   ├── vga.h           # VGA driver header
 │   ├── keyboard.h      # Keyboard driver header
 │   ├── shell.h         # Shell header
-│   └── string.h        # String library header
+│   ├── string.h        # String library header
+│   ├── idt.h           # IDT header
+│   ├── timer.h         # Timer header
+│   ├── rtc.h           # RTC header
+│   ├── memory.h        # Memory manager header
+│   └── tui.h           # TUI framework header
 ├── docs/               # Documentation
 ├── build/              # Build output (generated)
 ├── Makefile            # Build system (Linux/macOS)
-├── build.bat           # Build script (Windows)
+├── build_mingw.bat     # Build script (Windows/MinGW)
+├── build.bat           # Build script (Windows/cross-compiler)
 ├── build.sh            # Build script (Linux/macOS)
 ├── linker.ld           # Linker script
 └── README.md           # This file
@@ -186,7 +211,10 @@ NightOS/
            │  VGA Text Buffer    │
 0x000C0000 ├─────────────────────┤
            │  BIOS ROM           │
-0x00100000 └─────────────────────┘
+0x00100000 ├─────────────────────┤
+           │  Kernel Heap (1MB)  │
+           │  (kmalloc/kfree)    │
+0x00200000 └─────────────────────┘
 ```
 
 ### Boot Process

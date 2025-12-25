@@ -11,6 +11,11 @@
 #include "../include/keyboard.h"
 #include "../include/shell.h"
 #include "../include/string.h"
+#include "../include/idt.h"
+#include "../include/timer.h"
+#include "../include/rtc.h"
+#include "../include/memory.h"
+#include "../include/tui.h"
 
 /* Forward declarations */
 static void display_boot_logo(void);
@@ -43,6 +48,21 @@ void kernel_main(void) {
 static void kernel_init(void) {
     /* Initialize VGA driver */
     vga_init();
+    
+    /* Initialize IDT (interrupts) */
+    idt_init();
+    
+    /* Initialize PIT timer (100 Hz) */
+    timer_init(TIMER_FREQUENCY);
+    
+    /* Initialize RTC */
+    rtc_init();
+    
+    /* Initialize memory manager */
+    memory_init();
+    
+    /* Enable interrupts */
+    __asm__ volatile("sti");
     
     /* Initialize keyboard driver */
     keyboard_init();

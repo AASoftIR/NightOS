@@ -10,6 +10,10 @@
 #include "../include/string.h"
 #include "../include/io.h"
 #include "../include/config.h"
+#include "../include/timer.h"
+#include "../include/rtc.h"
+#include "../include/memory.h"
+#include "../include/tui.h"
 
 /* Maximum number of registered commands */
 #define MAX_COMMANDS 32
@@ -180,15 +184,169 @@ void cmd_halt(int argc, char* argv[]) {
     __asm__ volatile("cli; hlt");
 }
 
-/* Built-in: time (placeholder - no RTC driver yet) */
+/* Built-in: time - now with RTC support */
 void cmd_time(int argc, char* argv[]) {
     UNUSED(argc);
     UNUSED(argv);
     
-    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
-    vga_puts("System uptime: ");
+    rtc_time_t time;
+    char time_str[12];
+    char date_str[12];
+    
+    rtc_read_time(&time);
+    rtc_format_time(&time, time_str);
+    rtc_format_date(&time, date_str);
+    
     vga_set_color(vga_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
-    vga_puts("(RTC not implemented yet)\n");
+    vga_puts("\n  Current Time: ");
+    vga_set_color(vga_color(VGA_COLOR_CYAN, VGA_COLOR_BLACK));
+    vga_puts(time_str);
+    
+    vga_set_color(vga_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+    vga_puts("\n  Current Date: ");
+    vga_set_color(vga_color(VGA_COLOR_CYAN, VGA_COLOR_BLACK));
+    vga_puts(date_str);
+    
+    vga_set_color(vga_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+    vga_puts("\n  Day: ");
+    vga_set_color(vga_color(VGA_COLOR_CYAN, VGA_COLOR_BLACK));
+    vga_puts(rtc_day_name(time.weekday));
+    
+    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+    vga_puts("\n\n");
+}
+
+/* Built-in: uptime */
+void cmd_uptime(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+    
+    uint32_t seconds = timer_get_seconds();
+    uint32_t minutes = seconds / 60;
+    uint32_t hours = minutes / 60;
+    
+    vga_set_color(vga_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+    vga_puts("\n  System Uptime: ");
+    vga_set_color(vga_color(VGA_COLOR_CYAN, VGA_COLOR_BLACK));
+    vga_printf("%d:%02d:%02d", hours, minutes % 60, seconds % 60);
+    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+    vga_printf(" (Total ticks: %d)\n\n", timer_get_ticks());
+}
+
+/* Built-in: mem - show memory info */
+void cmd_mem(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+    
+    memory_stats_t stats;
+    memory_get_stats(&stats);
+    
+    vga_set_color(vga_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+    vga_puts("\n  Memory Statistics\n");
+    vga_puts("  =================\n");
+    
+    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+    vga_printf("  Total Memory:  %d KB\n", stats.total_memory / 1024);
+    vga_printf("  Used Memory:   %d KB\n", stats.used_memory / 1024);
+    vga_printf("  Free Memory:   %d KB\n", stats.free_memory / 1024);
+    vga_printf("  Allocations:   %d\n", stats.allocations);
+    vga_printf("  Frees:         %d\n\n", stats.frees);
+}
+
+/* Built-in: sleep */
+void cmd_sleep(int argc, char* argv[]) {
+    if (argc < 2) {
+        vga_puts("Usage: sleep <seconds>\n");
+        return;
+    }
+    
+    int seconds = atoi(argv[1]);
+    if (seconds <= 0) {
+        vga_puts("Invalid number of seconds\n");
+        return;
+    }
+    
+    vga_printf("Sleeping for %d seconds...\n", seconds);
+    sleep(seconds);
+    vga_puts("Done!\n");
+}
+
+/* Built-in: demo - TUI demonstration */
+void cmd_demo(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+    
+    /* Save screen state */
+    vga_clear();
+    
+    /* Initialize TUI */
+    tui_init();
+    
+    /* Draw title bar */
+    tui_draw_titlebar(" NightOS - TUI Demo ");
+    
+    /* Draw main window */
+    tui_window_t main_win;
+    tui_window_create(&main_win, 5, 3, 70, 15, " System Information ", 
+                      TUI_FLAG_BORDER | TUI_FLAG_SHADOW | TUI_FLAG_DOUBLE_BORDER);
+    tui_window_draw(&main_win);
+    
+    /* Display system info in window */
+    tui_window_print(&main_win, 2, 1, "NightOS v0.1.0 - Dark Theme Operating System");
+    
+    rtc_time_t time;
+    char time_str[12];
+    char date_str[12];
+    rtc_read_time(&time);
+    rtc_format_time(&time, time_str);
+    rtc_format_date(&time, date_str);
+    
+    char info[64];
+    strcpy(info, "Current Time: ");
+    strcat(info, time_str);
+    tui_window_print(&main_win, 2, 3, info);
+    
+    strcpy(info, "Current Date: ");
+    strcat(info, date_str);
+    tui_window_print(&main_win, 2, 4, info);
+    
+    uint32_t uptime = timer_get_seconds();
+    tui_window_print(&main_win, 2, 6, "Uptime:");
+    char uptime_str[20];
+    itoa(uptime, uptime_str, 10);
+    strcat(uptime_str, " seconds");
+    tui_window_print(&main_win, 10, 6, uptime_str);
+    
+    memory_stats_t stats;
+    memory_get_stats(&stats);
+    tui_window_print(&main_win, 2, 8, "Memory:");
+    char mem_str[32];
+    itoa(stats.free_memory / 1024, mem_str, 10);
+    strcat(mem_str, " KB free of ");
+    char total_str[16];
+    itoa(stats.total_memory / 1024, total_str, 10);
+    strcat(mem_str, total_str);
+    strcat(mem_str, " KB");
+    tui_window_print(&main_win, 10, 8, mem_str);
+    
+    /* Draw progress bar */
+    tui_window_print(&main_win, 2, 10, "Memory Usage:");
+    int percent = (stats.used_memory * 100) / stats.total_memory;
+    tui_draw_progress(main_win.x + 17, main_win.y + 11, 30, percent, VGA_COLOR_CYAN, VGA_COLOR_BLACK);
+    
+    /* Draw buttons */
+    tui_draw_button(main_win.x + 25, main_win.y + 13, " Press any key to exit ", true);
+    
+    /* Draw status bar */
+    tui_draw_statusbar(" NightOS TUI Demo ", " Press any key... ");
+    
+    /* Wait for key */
+    keyboard_getchar();
+    
+    /* Clear and return to shell */
+    vga_clear();
+    vga_set_color(vga_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+    vga_puts("Returned to shell.\n");
 }
 
 /* Initialize shell */
@@ -204,7 +362,11 @@ void shell_init(void) {
     shell_register_command("version", "Display OS version", cmd_version);
     shell_register_command("reboot", "Restart the system", cmd_reboot);
     shell_register_command("halt", "Halt the system", cmd_halt);
-    shell_register_command("time", "Display system time", cmd_time);
+    shell_register_command("time", "Display system time/date", cmd_time);
+    shell_register_command("uptime", "Show system uptime", cmd_uptime);
+    shell_register_command("mem", "Display memory statistics", cmd_mem);
+    shell_register_command("sleep", "Sleep for N seconds", cmd_sleep);
+    shell_register_command("demo", "TUI demonstration", cmd_demo);
 }
 
 /* Main shell loop */
